@@ -9,8 +9,9 @@ android {
     defaultConfig {
         applicationId "com.borysante.ocr"
         minSdkVersion 21
-        targetSdkVersion 33
-        versionCode 14
+        //noinspection EditedTargetSdkVersion
+        targetSdkVersion 34
+        versionCode 15
         versionName "5.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         resValue "string", "github_url", gitUrl
