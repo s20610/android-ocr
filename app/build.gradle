@@ -4,10 +4,10 @@ android {
     compileSdkVersion 35
     def gitUrl = getRepositoryURL()
 
-    namespace 'io.github.subhamtyagi.ocr'
+    namespace 'com.borysante.ocr'
 
     defaultConfig {
-        applicationId "io.github.subhamtyagi.ocr"
+        applicationId "com.borysante.ocr"
         minSdkVersion 21
         targetSdkVersion 33
         versionCode 14
