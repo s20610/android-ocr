@@ -30,6 +30,15 @@
              app:srcCompat="@drawable/ic_baseline_share_24"
              android:id="@+id/btn_share" />
 
+        <ImageButton
+            android:layout_height="match_parent"
+            android:layout_width="0dp"
+            android:contentDescription="@string/generic_image_description"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_weight="1"
+            app:srcCompat="@drawable/outline_text_to_speech_24"
+            android:id="@+id/btn_read" />
+
     </LinearLayout>
 
     <androidx.core.widget.NestedScrollView

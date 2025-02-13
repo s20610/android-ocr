@@ -19,9 +19,18 @@ import androidx.annotation.Nullable;
 
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
+import io.github.subhamtyagi.ocr.utils.TextToSpeechHelper;
+
 public class BottomSheetResultsFragment extends BottomSheetDialogFragment {
 
     private static final String ARGUMENT_TEXT = "arg_text";
+    private TextToSpeechHelper textToSpeechHelper;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+         textToSpeechHelper = new TextToSpeechHelper(requireContext());
+        super.onCreate(savedInstanceState);
+    }
 
     @Nullable
     @Override
@@ -38,21 +47,24 @@ public class BottomSheetResultsFragment extends BottomSheetDialogFragment {
         TextView resultantText = view.findViewById(R.id.resultant_text);
         ImageButton btnCopy = view.findViewById(R.id.btn_copy);
         ImageButton btnShare = view.findViewById(R.id.btn_share);
+        ImageButton btnTextToSpeech = view.findViewById(R.id.btn_read);
 
-        setupButtons(resultantTextString, btnCopy, btnShare, resultantText);
+        setupButtons(resultantTextString, btnCopy, btnShare, btnTextToSpeech, resultantText);
 
         return view;
     }
 
-    private void setupButtons(String text, ImageButton btnCopy, ImageButton btnShare, TextView resultantText) {
+    private void setupButtons(String text, ImageButton btnCopy, ImageButton btnShare, ImageButton btnTextToSpeech , TextView resultantText) {
         if (TextUtils.isEmpty(text.trim())) {
             setButtonState(btnCopy, false);
             setButtonState(btnShare, false);
+            setButtonState(btnTextToSpeech, false);
             resultantText.setText(R.string.no_results);
         } else {
             resultantText.setText(text);
             btnCopy.setOnClickListener(v -> copyToClipboard(text));
             btnShare.setOnClickListener(v -> shareText(text));
+            btnTextToSpeech.setOnClickListener(v -> readText(text));
         }
     }
 
@@ -77,6 +89,10 @@ public class BottomSheetResultsFragment extends BottomSheetDialogFragment {
         dismiss();
     }
 
+    private void readText(String text) {
+        textToSpeechHelper.readText(text);
+    }
+
     @Override
     public void onCancel(@NonNull DialogInterface dialog) {
         super.onCancel(dialog);
@@ -85,6 +101,12 @@ public class BottomSheetResultsFragment extends BottomSheetDialogFragment {
     @Override
     public void dismiss() {
         super.dismiss();
+    }
+
+    @Override
+    public void onDestroy() {
+        textToSpeechHelper.shutdown();
+        super.onDestroy();
     }
 
     public static BottomSheetResultsFragment newInstance(String text) {

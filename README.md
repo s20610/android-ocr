@@ -1,4 +1,4 @@
-# OCR  ​  [<img src="https://f-droid.org/badge/get-it-on.png" alt="Get it on F-Droid" height="60">](https://f-droid.org/packages/io.github.subhamtyagi.ocr/)
+# OCR  ​  [<img src="https://f-droid.org/badge/get-it-on.png" alt="Get it on F-Droid" height="60">](https://f-droid.org/packages/ocr/)
 
 <a href="https://hosted.weblate.org/projects/android-ocr" alt="Translate on Weblate"><img src="https://img.shields.io/badge/Translation-Weblate-red" ></a>
 
