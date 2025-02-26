@@ -1,16 +1,11 @@
-package com.borysante.ocr;
+package com.borysante.ocr
 
-import android.app.Application;
+import android.app.Application
+import com.google.android.material.color.DynamicColors
 
-import com.google.android.material.color.DynamicColors;
-
-
-public class App extends Application {
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        DynamicColors.applyToActivitiesIfAvailable(this);
+class App : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        DynamicColors.applyToActivitiesIfAvailable(this)
     }
 }
-
-

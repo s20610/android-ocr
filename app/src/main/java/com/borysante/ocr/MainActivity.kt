@@ -1,202 +1,189 @@
-package com.borysante.ocr;
+package com.borysante.ocr
 
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.provider.MediaStore;
-import android.text.Html;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
+import android.text.Html
+import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.borysante.ocr.ocr.ImageTextReader
+import com.borysante.ocr.utils.Constants
+import com.borysante.ocr.utils.Language
+import com.borysante.ocr.utils.SpUtil
+import com.borysante.ocr.utils.Utils
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.googlecode.tesseract.android.TessBaseAPI.ProgressNotifier
+import com.googlecode.tesseract.android.TessBaseAPI.ProgressValues
+import com.theartofdev.edmodo.cropper.CropImage
+import com.theartofdev.edmodo.cropper.CropImageView
+import java.io.BufferedInputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.Arrays
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.stream.Collectors
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.Lifecycle;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+class MainActivity : AppCompatActivity(), ProgressNotifier {
+    private var allLanguageName: ArrayList<String>? = null
+    private var dirBest: File? = null
+    private var dirStandard: File? = null
+    private var dirFast: File? = null
+    private var currentDirectory: File? = null
+    private var mImageTextReader: ImageTextReader? = null
 
-import com.borysante.ocr.ocr.ImageTextReader;
-import com.borysante.ocr.utils.Constants;
-import com.borysante.ocr.utils.Language;
-import com.borysante.ocr.utils.SpUtil;
-import com.borysante.ocr.utils.Utils;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.progressindicator.LinearProgressIndicator;
-import com.googlecode.tesseract.android.TessBaseAPI;
-import com.theartofdev.edmodo.cropper.CropImage;
-import com.theartofdev.edmodo.cropper.CropImageView;
-
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-
-public class MainActivity extends AppCompatActivity implements TessBaseAPI.ProgressNotifier {
-
-    public static final String TAG = "MainActivity";
-    private static final int REQUEST_CODE_SETTINGS = 797;
-    private static boolean isRefresh = false;
-
-    private ArrayList<String> allLanguageName;
-    private File dirBest;
-    private File dirStandard;
-    private File dirFast;
-    private File currentDirectory;
-    private ImageTextReader mImageTextReader;
     /**
      * TrainingDataType: i.e Best, Standard, Fast
      */
-    private String mTrainingDataType;
-    private int mPageSegMode;
-    private Map<String, String> parameters;
+    private var mTrainingDataType: String? = null
+    private var mPageSegMode = 0
+    private var parameters: Map<String, String>? = null
+
     /**
      * AlertDialog for showing when language data doesn't exists
      */
-    private AlertDialog dialog;
-    private ImageView mImageView;
-    private LinearProgressIndicator mProgressIndicator;
-    private SwipeRefreshLayout mSwipeRefreshLayout;
-    private FloatingActionButton mFloatingActionButton;
-    private LinearLayout mDownloadLayout;
+    private var dialog: AlertDialog? = null
+    private var mImageView: ImageView? = null
+    private var mProgressIndicator: LinearProgressIndicator? = null
+    private var mSwipeRefreshLayout: SwipeRefreshLayout? = null
+    private var mFloatingActionButton: FloatingActionButton? = null
+    private var mDownloadLayout: LinearLayout? = null
+
     /**
      * Language name to be displayed
      */
-    private TextView mLanguageName;
-    private ExecutorService executorService;
-    private Handler handler;
-    private LinearProgressIndicator mProgressBar;
-    private TextView mProgressMessage;
+    private var mLanguageName: TextView? = null
+    private var executorService: ExecutorService? = null
+    private var handler: Handler? = null
+    private var mProgressBar: LinearProgressIndicator? = null
+    private var mProgressMessage: TextView? = null
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        SpUtil.getInstance().init(this);
+        SpUtil.getInstance().init(this)
 
-        allLanguageName = new ArrayList<>(Arrays.asList(getResources().getStringArray(R.array.ocr_engine_language)));
+        allLanguageName =
+            ArrayList(Arrays.asList(*resources.getStringArray(R.array.ocr_engine_language)))
 
-        mImageView = findViewById(R.id.source_image);
-        mProgressIndicator = findViewById(R.id.progress_indicator);
-        mSwipeRefreshLayout = findViewById(R.id.swipe_to_refresh);
-        mFloatingActionButton = findViewById(R.id.btn_scan);
-        mLanguageName = findViewById(R.id.language_name1);
+        mImageView = findViewById(R.id.source_image)
+        mProgressIndicator = findViewById(R.id.progress_indicator)
+        mSwipeRefreshLayout = findViewById(R.id.swipe_to_refresh)
+        mFloatingActionButton = findViewById(R.id.btn_scan)
+        mLanguageName = findViewById(R.id.language_name1)
 
-        mProgressBar = findViewById(R.id.progress_bar);
-        mProgressMessage = findViewById(R.id.progress_message);
-        mDownloadLayout = findViewById(R.id.download_layout);
+        mProgressBar = findViewById(R.id.progress_bar)
+        mProgressMessage = findViewById(R.id.progress_message)
+        mDownloadLayout = findViewById(R.id.download_layout)
 
-        executorService = Executors.newFixedThreadPool(1);
-        handler = new Handler(Looper.getMainLooper());
+        executorService = Executors.newFixedThreadPool(1)
+        handler = Handler(Looper.getMainLooper())
 
-        initDirectories();
+        initDirectories()
         /*
          * check if this was initiated by shared menu if yes then get the image uri and get the text
          * language will be preselected by user in settings
          */
-        initIntent();
-        initializeOCR();
-        initViews();
+        initIntent()
+        initializeOCR()
+        initViews()
     }
 
-    private void initViews() {
-
-        mFloatingActionButton.setOnClickListener(v -> {
-            if (isNoLanguagesDataMissingFromSet()) {
+    private fun initViews() {
+        mFloatingActionButton!!.setOnClickListener { v: View? ->
+            if (isNoLanguagesDataMissingFromSet) {
                 if (mImageTextReader != null) {
-                    selectImage();
+                    selectImage()
                 } else {
-                    initializeOCR();
+                    initializeOCR()
                 }
             } else {
-                downloadLanguageData();
+                downloadLanguageData()
             }
-
-        });
-        mSwipeRefreshLayout.setOnRefreshListener(() -> {
-            if (isNoLanguagesDataMissingFromSet()) {
+        }
+        mSwipeRefreshLayout!!.setOnRefreshListener {
+            if (isNoLanguagesDataMissingFromSet) {
                 if (mImageTextReader != null) {
-                    Drawable drawable = mImageView.getDrawable();
+                    val drawable = mImageView!!.drawable
                     if (drawable != null) {
-                        Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+                        val bitmap = (drawable as BitmapDrawable).bitmap
                         if (bitmap != null) {
-                            isRefresh = true;
-                            executorService.submit(new ConvertImageToText(bitmap));
+                            isRefresh = true
+                            executorService!!.submit(ConvertImageToText(bitmap))
                         }
                     }
                 } else {
-                    initializeOCR();
+                    initializeOCR()
                 }
             } else {
-                downloadLanguageData();
+                downloadLanguageData()
             }
-            mSwipeRefreshLayout.setRefreshing(false);
-
-        });
+            mSwipeRefreshLayout!!.isRefreshing = false
+        }
         if (Utils.isPersistData()) {
-            Bitmap bitmap = loadBitmapFromStorage();
+            val bitmap = loadBitmapFromStorage()
             if (bitmap != null) {
-                mImageView.setImageBitmap(bitmap);
+                mImageView!!.setImageBitmap(bitmap)
             }
         }
     }
 
-    private void initIntent() {
-        Intent intent = getIntent();
-        String action = intent.getAction();
-        String type = intent.getType();
-        if (Intent.ACTION_SEND.equals(action) && type != null) {
+    private fun initIntent() {
+        val intent = intent
+        val action = intent.action
+        val type = intent.type
+        if (Intent.ACTION_SEND == action && type != null) {
             if (type.startsWith("image/")) {
-                Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+                val imageUri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 if (imageUri != null) {
-                    mImageView.setImageURI(imageUri);
-                    showLanguageSelectionDialog(imageUri);
+                    mImageView!!.setImageURI(imageUri)
+                    showLanguageSelectionDialog(imageUri)
                 }
             }
-        } else if (action != null && action.equals("screenshot")) {
+        } else if (action != null && action == "screenshot") {
             // uri
         }
     }
 
-    private void showLanguageSelectionDialog(Uri imageUri) {
+    private fun showLanguageSelectionDialog(imageUri: Uri) {
         // if (this.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
-        ShareFragment frag = ShareFragment.newInstance(imageUri, allLanguageName);
-        frag.show(getSupportFragmentManager(), "shareFrag");
-        // }
+        val frag = ShareFragment.newInstance(imageUri, allLanguageName)
+        frag.show(supportFragmentManager, "shareFrag")
 
+        // }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        mLanguageName.setText(Utils.getTrainingDataLanguages(this).stream().map(Language::getName).collect(Collectors.joining(", ")));
+    override fun onResume() {
+        super.onResume()
+        mLanguageName!!.text =
+            Utils.getTrainingDataLanguages(this).stream().map { obj: Language -> obj.name }.collect(
+                Collectors.joining(", ")
+            )
     }
 
     /* public void startOCRFromShareMenu(Uri imageUri, Set<Language> languages) {
@@ -208,27 +195,20 @@ public class MainActivity extends AppCompatActivity implements TessBaseAPI.Progr
             CropImage.activity(imageUri).start(MainActivity.this);
         }
     }*/
-
-    private void initDirectories() {
-        String[] dirNames = {"best", "fast", "standard"};
-        for (String dirName : dirNames) {
-            File dir = new File(getExternalFilesDir(dirName), "tessdata");
-            if (dir.mkdirs() || dir.isDirectory()) {
-                switch (dirName) {
-                    case "best":
-                        dirBest = dir.getParentFile();
-                        break;
-                    case "fast":
-                        dirFast = dir.getParentFile();
-                        break;
-                    case "standard":
-                        dirStandard = dir.getParentFile();
-                        break;
+    private fun initDirectories() {
+        val dirNames = arrayOf("best", "fast", "standard")
+        for (dirName in dirNames) {
+            val dir = File(getExternalFilesDir(dirName), "tessdata")
+            if (dir.mkdirs() || dir.isDirectory) {
+                when (dirName) {
+                    "best" -> dirBest = dir.parentFile
+                    "fast" -> dirFast = dir.parentFile
+                    "standard" -> dirStandard = dir.parentFile
                 }
             }
         }
         // Set currentDirectory to the last initialized directory (standard)
-        currentDirectory = new File(dirStandard, "tessdata");
+        currentDirectory = File(dirStandard, "tessdata")
     }
 
 
@@ -236,369 +216,406 @@ public class MainActivity extends AppCompatActivity implements TessBaseAPI.Progr
      * initialize the OCR i.e tesseract api
      * if there is no training data in directory than it will ask for download
      */
-    private void initializeOCR() {
-        Set<Language> languages=Utils.getTrainingDataLanguages(this);
-        File cf;
-        mTrainingDataType = Utils.getTrainingDataType();
-        mPageSegMode = Utils.getPageSegMode();
-        parameters = Utils.getAllParameters();
+    private fun initializeOCR() {
+        val languages = Utils.getTrainingDataLanguages(this)
+        val cf: File?
+        mTrainingDataType = Utils.getTrainingDataType()
+        mPageSegMode = Utils.getPageSegMode()
+        parameters = Utils.getAllParameters()
 
-        switch (mTrainingDataType) {
-            case "best":
-                currentDirectory = new File(dirBest, "tessdata");
-                cf = dirBest;
-                break;
-            case "standard":
-                cf = dirStandard;
-                currentDirectory = new File(dirStandard, "tessdata");
-                break;
-            default:
-                cf = dirFast;
-                currentDirectory = new File(dirFast, "tessdata");
+        when (mTrainingDataType) {
+            "best" -> {
+                currentDirectory = File(dirBest, "tessdata")
+                cf = dirBest
+            }
 
+            "standard" -> {
+                cf = dirStandard
+                currentDirectory = File(dirStandard, "tessdata")
+            }
+
+            else -> {
+                cf = dirFast
+                currentDirectory = File(dirFast, "tessdata")
+            }
         }
 
-        if (isNoLanguagesDataMissingFromSet()) {
-            startImageTextReaderThread(cf, languages);
+        if (isNoLanguagesDataMissingFromSet) {
+            startImageTextReaderThread(cf!!, languages)
         } else {
-            downloadLanguageData();
+            downloadLanguageData()
         }
     }
 
-    private void startImageTextReaderThread(File cf, Set<Language> languages) {
-        new Thread(() -> {
+    private fun startImageTextReaderThread(cf: File, languages: Set<Language>) {
+        Thread {
             try {
                 if (mImageTextReader != null) {
-                    mImageTextReader.tearDownEverything();
+                    mImageTextReader!!.tearDownEverything()
                 }
-                mImageTextReader = ImageTextReader.getInstance(cf.getAbsolutePath(), languages, mPageSegMode, parameters, Utils.isExtraParameterSet(), MainActivity.this);
-                if (mImageTextReader != null && !mImageTextReader.isSuccess()) {
-                    handleReaderException(languages);
+                mImageTextReader = ImageTextReader.getInstance(
+                    cf.absolutePath,
+                    languages,
+                    mPageSegMode,
+                    parameters,
+                    Utils.isExtraParameterSet(),
+                    this@MainActivity
+                )
+                if (mImageTextReader != null && !mImageTextReader!!.isSuccess) {
+                    handleReaderException(languages)
                 }
-            } catch (Exception e) {
-                handleReaderException(languages);
+            } catch (e: Exception) {
+                handleReaderException(languages)
             }
-        }).start();
+        }.start()
     }
 
-    private void handleReaderException(Set<Language> languages) {
-        File destFile = new File(currentDirectory, String.format(Constants.LANGUAGE_CODE, languages));
-        destFile.delete();
-        mImageTextReader = null;
+    private fun handleReaderException(languages: Set<Language>) {
+        val destFile = File(currentDirectory, String.format(Constants.LANGUAGE_CODE, languages))
+        destFile.delete()
+        mImageTextReader = null
     }
 
-    private void downloadLanguageData() {
-        Set<Language> missingLanguage = new HashSet<>();
-        Set<Language> languages =Utils.getTrainingDataLanguages(this);
-        if (!Utils.isNetworkAvailable(getApplication())) {
-            Toast.makeText(this, getString(R.string.you_are_not_connected_to_internet), Toast.LENGTH_SHORT).show();
-            return;
-            }
-        for (Language l : languages) {
-            if (isLanguageDataMissing(mTrainingDataType, l)) {
-                missingLanguage.add(l);
+    private fun downloadLanguageData() {
+        val missingLanguage: MutableSet<Language> = HashSet()
+        val languages = Utils.getTrainingDataLanguages(this)
+        if (!Utils.isNetworkAvailable(application)) {
+            Toast.makeText(
+                this,
+                getString(R.string.you_are_not_connected_to_internet),
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        for (l in languages) {
+            if (isLanguageDataMissing(mTrainingDataType!!, l)) {
+                missingLanguage.add(l)
             }
         }
-        String missingLangName = missingLanguage.stream().map(Language::getName).collect(Collectors.joining(", "));
-        String msg = String.format(getString(R.string.download_description), missingLangName);
-        dialog = new AlertDialog.Builder(this).setTitle(R.string.training_data_missing).setCancelable(false).setMessage(msg).setPositiveButton(R.string.yes, (dialog, which) -> {
-            dialog.cancel();
-            executorService.submit(new DownloadTraining(mTrainingDataType, missingLanguage));    
-        }).setNegativeButton(R.string.no, (dialog, which) -> dialog.cancel()).create();
-        dialog.show();
-        
+        val missingLangName = missingLanguage.stream().map { obj: Language -> obj.name }.collect(
+            Collectors.joining(", ")
+        )
+        val msg = String.format(getString(R.string.download_description), missingLangName)
+        dialog =
+            AlertDialog.Builder(this).setTitle(R.string.training_data_missing).setCancelable(false)
+                .setMessage(msg).setPositiveButton(R.string.yes) { dialog, which ->
+                    dialog.cancel()
+                    executorService!!.submit(DownloadTraining(mTrainingDataType, missingLanguage))
+                }.setNegativeButton(R.string.no) { dialog, which -> dialog.cancel() }.create()
+        dialog!!.show()
     }
 
-    private boolean isNoLanguagesDataMissingFromSet() {
-        final String dataType=mTrainingDataType;
-        Set<Language> languages= Utils.getTrainingDataLanguages(this);
-        for (Language language : languages) {
-            if (isLanguageDataMissing(dataType, language)) return false;
+    private val isNoLanguagesDataMissingFromSet: Boolean
+        get() {
+            val dataType = mTrainingDataType
+            val languages = Utils.getTrainingDataLanguages(this)
+            for (language in languages) {
+                if (isLanguageDataMissing(dataType!!, language)) return false
+            }
+            return true
         }
-        return true;
-    }
 
-    private boolean isLanguageDataMissing(final @NonNull String dataType, final @NonNull Language language) {
-        switch (dataType) {
-            case "best":
-                currentDirectory = new File(dirBest, "tessdata");
-                break;
-            case "standard":
-                currentDirectory = new File(dirStandard, "tessdata");
-                break;
-            default:
-                currentDirectory = new File(dirFast, "tessdata");
+    private fun isLanguageDataMissing(dataType: String, language: Language): Boolean {
+        currentDirectory = when (dataType) {
+            "best" -> File(dirBest, "tessdata")
+            "standard" -> File(dirStandard, "tessdata")
+            else -> File(dirFast, "tessdata")
 
         }
-        return !new File(currentDirectory, String.format(Constants.LANGUAGE_CODE, language.getCode())).exists();
+        return !File(
+            currentDirectory,
+            String.format(Constants.LANGUAGE_CODE, language.code)
+        ).exists()
     }
 
-    private void selectImage() {
-        CropImage.activity().setGuidelines(CropImageView.Guidelines.ON).start(this);
+    private fun selectImage() {
+        CropImage.activity().setGuidelines(CropImageView.Guidelines.ON).start(this)
     }
 
-    private void convertImageToText(Uri imageUri) {
-        Bitmap bitmap = null;
+    private fun convertImageToText(imageUri: Uri) {
+        var bitmap: Bitmap? = null
         try {
-            bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
-        } catch (IOException e) {
-            Log.e(TAG, "convertImageToText: " + e.getLocalizedMessage());
+            bitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
+        } catch (e: IOException) {
+            Log.e(TAG, "convertImageToText: " + e.localizedMessage)
         }
-        mImageView.setImageURI(imageUri);
-        executorService.submit(new ConvertImageToText(bitmap));
+        mImageView!!.setImageURI(imageUri)
+        executorService!!.submit(ConvertImageToText(bitmap))
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_CODE_SETTINGS) {
-            initializeOCR();
+            initializeOCR()
         }
-        if (resultCode == RESULT_OK) {
+        if (resultCode == Activity.RESULT_OK) {
             if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
-                if (isNoLanguagesDataMissingFromSet()) {
-                    CropImage.ActivityResult result = CropImage.getActivityResult(data);
+                if (isNoLanguagesDataMissingFromSet) {
+                    val result = CropImage.getActivityResult(data)
                     if (result != null) {
-                        convertImageToText(result.getUri());
+                        convertImageToText(result.uri)
                     }
                 } else {
-                    initializeOCR();
+                    initializeOCR()
                 }
-
             }
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        executorService.shutdownNow();
+    override fun onDestroy() {
+        super.onDestroy()
+        executorService!!.shutdownNow()
         if (dialog != null) {
-            dialog.dismiss();
-            dialog = null;
+            dialog!!.dismiss()
+            dialog = null
         }
-        if (mImageTextReader != null) mImageTextReader.tearDownEverything();
+        if (mImageTextReader != null) mImageTextReader!!.tearDownEverything()
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(final Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
 
-        MenuItem showHistoryItem = menu.findItem(R.id.action_history);
-        showHistoryItem.setVisible(Utils.isPersistData());
-        return true;
+        val showHistoryItem = menu.findItem(R.id.action_history)
+        showHistoryItem.setVisible(Utils.isPersistData())
+        return true
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
+    override fun onStop() {
+        super.onStop()
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val id = item.itemId
         if (id == R.id.action_settings) {
-            startActivityForResult(new Intent(this, SettingsActivity.class), REQUEST_CODE_SETTINGS);
+            startActivityForResult(
+                Intent(this, SettingsActivity::class.java),
+                REQUEST_CODE_SETTINGS
+            )
         } else if (id == R.id.action_history) {
-            showOCRResult(Utils.getLastUsedText());
+            showOCRResult(Utils.getLastUsedText())
         }
-        return super.onOptionsItemSelected(item);
+        return super.onOptionsItemSelected(item)
     }
 
-    @Override
-    public void onProgressValues(final TessBaseAPI.ProgressValues progressValues) {
-        runOnUiThread(() -> mProgressIndicator.setProgress((int) (progressValues.getPercent() * 1.46)));
+    override fun onProgressValues(progressValues: ProgressValues) {
+        runOnUiThread { mProgressIndicator!!.progress = (progressValues.percent * 1.46).toInt() }
     }
 
-    public void saveBitmapToStorage(Bitmap bitmap) {
-        FileOutputStream fileOutputStream;
+    fun saveBitmapToStorage(bitmap: Bitmap) {
+        val fileOutputStream: FileOutputStream
         try {
-            fileOutputStream = openFileOutput("last_file.jpeg", Context.MODE_PRIVATE);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 30, fileOutputStream);
-            fileOutputStream.close();
-        } catch (IOException e) {
-            Log.e(TAG, "loadBitmapFromStorage: " + e.getLocalizedMessage());
+            fileOutputStream = openFileOutput("last_file.jpeg", Context.MODE_PRIVATE)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 30, fileOutputStream)
+            fileOutputStream.close()
+        } catch (e: IOException) {
+            Log.e(TAG, "loadBitmapFromStorage: " + e.localizedMessage)
         }
     }
 
-    public Bitmap loadBitmapFromStorage() {
-        Bitmap bitmap = null;
-        FileInputStream fileInputStream;
+    fun loadBitmapFromStorage(): Bitmap? {
+        var bitmap: Bitmap? = null
+        val fileInputStream: FileInputStream
         try {
-            fileInputStream = openFileInput("last_file.jpeg");
-            bitmap = BitmapFactory.decodeStream(fileInputStream);
-            fileInputStream.close();
-
-        } catch (IOException e) {
-            Log.e(TAG, "loadBitmapFromStorage: " + e.getLocalizedMessage());
+            fileInputStream = openFileInput("last_file.jpeg")
+            bitmap = BitmapFactory.decodeStream(fileInputStream)
+            fileInputStream.close()
+        } catch (e: IOException) {
+            Log.e(TAG, "loadBitmapFromStorage: " + e.localizedMessage)
         }
-        return bitmap;
+        return bitmap
     }
 
-    public void showOCRResult(String text) {
-        if (this.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
-            BottomSheetResultsFragment bottomSheetResultsFragment = BottomSheetResultsFragment.newInstance(text);
-            bottomSheetResultsFragment.show(getSupportFragmentManager(), "bottomSheetResultsFragment");
+    fun showOCRResult(text: String?) {
+        if (this.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            val bottomSheetResultsFragment = BottomSheetResultsFragment.newInstance(text)
+            bottomSheetResultsFragment.show(supportFragmentManager, "bottomSheetResultsFragment")
         }
-
     }
 
-    private class ConvertImageToText implements Runnable {
-        private Bitmap bitmap;
+    private inner class ConvertImageToText(bitmap: Bitmap?) : Runnable {
+        private var bitmap: Bitmap
 
-        public ConvertImageToText(Bitmap bitmap) {
-            this.bitmap = bitmap;
+        init {
+            this.bitmap = bitmap!!
         }
 
-        @Override
-        public void run() {
+        override fun run() {
             // Pre-execute on UI thread
-            handler.post(() -> {
-                mProgressIndicator.setProgress(0);
-                mProgressIndicator.setVisibility(View.VISIBLE);
-                animateImageViewAlpha(0.2f);
-            });
+            handler!!.post {
+                mProgressIndicator!!.progress = 0
+                mProgressIndicator!!.visibility = View.VISIBLE
+                animateImageViewAlpha(0.2f)
+            }
 
             // Background execution
             if (!isRefresh && Utils.isPreProcessImage()) {
-                bitmap = Utils.preProcessBitmap(bitmap);
+                bitmap = Utils.preProcessBitmap(bitmap)
             }
-            isRefresh = false;
-            saveBitmapToStorage(bitmap);
-            String text = mImageTextReader.getTextFromBitmap(bitmap);
+            isRefresh = false
+            saveBitmapToStorage(bitmap)
+            val text = mImageTextReader!!.getTextFromBitmap(bitmap)
 
             // Post-execution on UI thread
-            handler.post(() -> {
-                mProgressIndicator.setVisibility(View.GONE);
-                animateImageViewAlpha(1f);
-                String cleanText = Html.fromHtml(text).toString().trim();
-                showOCRResult(cleanText);
-                Toast.makeText(MainActivity.this, "With Confidence: " + mImageTextReader.getAccuracy() + "%", Toast.LENGTH_SHORT).show();
-                Utils.putLastUsedText(cleanText);
-                updateImageView();
-            });
+            handler!!.post {
+                mProgressIndicator!!.visibility = View.GONE
+                animateImageViewAlpha(1f)
+                val cleanText = Html.fromHtml(text).toString().trim { it <= ' ' }
+                showOCRResult(cleanText)
+                Toast.makeText(
+                    this@MainActivity,
+                    "With Confidence: " + mImageTextReader!!.accuracy + "%",
+                    Toast.LENGTH_SHORT
+                ).show()
+                Utils.putLastUsedText(cleanText)
+                updateImageView()
+            }
         }
 
-        private void animateImageViewAlpha(float alpha) {
-            mImageView.animate().alpha(alpha).setDuration(450).start();
+        fun animateImageViewAlpha(alpha: Float) {
+            mImageView!!.animate().alpha(alpha).setDuration(450).start()
         }
 
-        private void updateImageView() {
-            Bitmap bitmap = loadBitmapFromStorage();
+        fun updateImageView() {
+            val bitmap = loadBitmapFromStorage()
             if (bitmap != null) {
-                mImageView.setImageBitmap(bitmap);
+                mImageView!!.setImageBitmap(bitmap)
             }
         }
     }
 
-    private class DownloadTraining implements Runnable {
-        private final String dataType;
-        private final  Set<Language> languages;
-        private String size;
+    private inner class DownloadTraining(dataType: String?, langs: Set<Language>) :
+        Runnable {
+        private val dataType = dataType!!
+        private val languages = langs
+        private var size: String? = null
 
-        public DownloadTraining(String dataType, Set<Language> langs) {
-            this.dataType = dataType;
-            this.languages = langs;
-        }
-
-        @Override
-        public void run() {
-            handler.post(() -> {
-                mProgressMessage.setText(getString(R.string.downloading_language));
-                mDownloadLayout.setVisibility(View.VISIBLE);
-                mProgressBar.setVisibility(View.GONE);
-            });
-
-            final boolean[] success={true};
-            for (Language lang : languages) {
-               success[0] = success[0] && downloadTrainingData(dataType, lang.getCode());
+        override fun run() {
+            handler!!.post {
+                mProgressMessage!!.text = getString(R.string.downloading_language)
+                mDownloadLayout!!.visibility = View.VISIBLE
+                mProgressBar!!.visibility = View.GONE
             }
-            handler.post(() -> {
-                mDownloadLayout.setVisibility(View.GONE);
+
+            val success = booleanArrayOf(true)
+            for (lang in languages) {
+                success[0] = success[0] && downloadTrainingData(dataType, lang.code)
+            }
+            handler!!.post {
+                mDownloadLayout!!.visibility = View.GONE
                 if (success[0]) {
-                    initializeOCR();
+                    initializeOCR()
                 } else {
-                    Toast.makeText(MainActivity.this, "Download failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Download failed",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-            });
+            }
         }
 
         @SuppressLint("DefaultLocale")
-        private boolean downloadTrainingData(String dataType, String lang) {
-            String downloadURL = getDownloadUrl(dataType, lang);
-            if (downloadURL == null) {
-                return false;
-            }
+        fun downloadTrainingData(dataType: String, lang: String): Boolean {
+            var downloadURL = getDownloadUrl(dataType, lang) ?: return false
             try {
-                URL url = new URL(downloadURL);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setInstanceFollowRedirects(false);
-                downloadURL = followRedirects(conn, downloadURL);
-                conn = (HttpURLConnection) new URL(downloadURL).openConnection();
-                conn.connect();
-                int totalContentSize = conn.getContentLength();
+                val url = URL(downloadURL)
+                var conn = url.openConnection() as HttpURLConnection
+                conn.instanceFollowRedirects = false
+                downloadURL = followRedirects(conn, downloadURL)
+                conn = URL(downloadURL).openConnection() as HttpURLConnection
+                conn.connect()
+                val totalContentSize = conn.contentLength
                 if (totalContentSize <= 0) {
-                    return false;
+                    return false
                 }
-                size = Utils.getSize(totalContentSize);
+                size = Utils.getSize(totalContentSize)
 
                 // Switch from indeterminate to determinate progress bar
-                handler.post(() -> {
-                    mProgressBar.setVisibility(View.VISIBLE);
-                    mProgressMessage.setText(String.format("0%s%s", getString(R.string.percentage_downloaded), size));
-                    mProgressBar.setProgress(0);               // Reset progress bar to 0
-                });
+                handler!!.post {
+                    mProgressBar!!.visibility = View.VISIBLE
+                    mProgressMessage!!.text = String.format(
+                        "0%s%s",
+                        getString(R.string.percentage_downloaded),
+                        size
+                    )
+                    mProgressBar!!.progress = 0 // Reset progress bar to 0
+                }
 
-                try (InputStream input = new BufferedInputStream(conn.getInputStream()); OutputStream output = new FileOutputStream(new File(currentDirectory, String.format(Constants.LANGUAGE_CODE, lang)))) {
+                BufferedInputStream(conn.inputStream).use { input ->
+                    FileOutputStream(
+                        File(
+                            currentDirectory, String.format(
+                                Constants.LANGUAGE_CODE, lang
+                            )
+                        )
+                    ).use { output ->
+                        val data = ByteArray(6 * 1024)
+                        var downloaded = 0
+                        var count: Int
 
-                    byte[] data = new byte[6 * 1024];
-                    int downloaded = 0;
-                    int count;
-
-                    while ((count = input.read(data)) != -1) {
-                        output.write(data, 0, count);
-                        downloaded += count;
-                        int percentage = (downloaded * 100) / totalContentSize;
-                        handler.post(() -> {
-                            mProgressBar.setProgress(percentage);
-                            mProgressMessage.setText(String.format("%d%s%s.", percentage, getString(R.string.percentage_downloaded), size));
-                        });
+                        while ((input.read(data).also { count = it }) != -1) {
+                            output.write(data, 0, count)
+                            downloaded += count
+                            val percentage = (downloaded * 100) / totalContentSize
+                            handler!!.post {
+                                mProgressBar!!.progress = percentage
+                                mProgressMessage!!.text = String.format(
+                                    "%d%s%s.",
+                                    percentage,
+                                    getString(R.string.percentage_downloaded),
+                                    size
+                                )
+                            }
+                        }
+                        output.flush()
                     }
-                    output.flush();
                 }
-
-                return true;
-            } catch (IOException e) {
-                Log.e(TAG, "Download failed: " + e.getLocalizedMessage());
-                return false;
+                return true
+            } catch (e: IOException) {
+                Log.e(TAG, "Download failed: " + e.localizedMessage)
+                return false
             }
         }
 
-        private String getDownloadUrl(String dataType, String lang) {
-            switch (dataType) {
-                case "best":
-                    return lang.equals("akk") ? Constants.TESSERACT_DATA_DOWNLOAD_URL_AKK_BEST : lang.equals("eqo") ? Constants.TESSERACT_DATA_DOWNLOAD_URL_EQU : String.format(Constants.TESSERACT_DATA_DOWNLOAD_URL_BEST, lang);
-                case "standard":
-                    return lang.equals("akk") ? Constants.TESSERACT_DATA_DOWNLOAD_URL_AKK_STANDARD : lang.equals("eqo") ? Constants.TESSERACT_DATA_DOWNLOAD_URL_EQU : String.format(Constants.TESSERACT_DATA_DOWNLOAD_URL_STANDARD, lang);
-                default: // Assuming "fast" is the default
-                    return lang.equals("akk") ? Constants.TESSERACT_DATA_DOWNLOAD_URL_AKK_FAST : lang.equals("eqo") ? Constants.TESSERACT_DATA_DOWNLOAD_URL_EQU : String.format(Constants.TESSERACT_DATA_DOWNLOAD_URL_FAST, lang);
+        fun getDownloadUrl(dataType: String, lang: String): String {
+            return when (dataType) {
+                "best" -> if (lang == "akk") Constants.TESSERACT_DATA_DOWNLOAD_URL_AKK_BEST else if (lang == "eqo") Constants.TESSERACT_DATA_DOWNLOAD_URL_EQU else String.format(
+                    Constants.TESSERACT_DATA_DOWNLOAD_URL_BEST, lang
+                )
+
+                "standard" -> if (lang == "akk") Constants.TESSERACT_DATA_DOWNLOAD_URL_AKK_STANDARD else if (lang == "eqo") Constants.TESSERACT_DATA_DOWNLOAD_URL_EQU else String.format(
+                    Constants.TESSERACT_DATA_DOWNLOAD_URL_STANDARD, lang
+                )
+
+                else -> if (lang == "akk") Constants.TESSERACT_DATA_DOWNLOAD_URL_AKK_FAST else if (lang == "eqo") Constants.TESSERACT_DATA_DOWNLOAD_URL_EQU else String.format(
+                    Constants.TESSERACT_DATA_DOWNLOAD_URL_FAST, lang
+                )
             }
         }
 
-        private String followRedirects(HttpURLConnection conn, String downloadURL) throws IOException {
+        @Throws(IOException::class)
+        fun followRedirects(conn: HttpURLConnection, downloadURL: String): String {
+            var conn = conn
+            var downloadURL = downloadURL
             while (true) {
-                int responseCode = conn.getResponseCode();
+                val responseCode = conn.responseCode
                 if (responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP) {
-                    String location = conn.getHeaderField("Location");
-                    URL base = new URL(downloadURL);
-                    downloadURL = new URL(base, location).toExternalForm(); // Handle relative URLs
-                    conn = (HttpURLConnection) new URL(downloadURL).openConnection(); // Re-open connection
+                    val location = conn.getHeaderField("Location")
+                    val base = URL(downloadURL)
+                    downloadURL = URL(base, location).toExternalForm() // Handle relative URLs
+                    conn =
+                        URL(downloadURL).openConnection() as HttpURLConnection // Re-open connection
                 } else {
-                    break; // No more redirects
+                    break // No more redirects
                 }
             }
-            return downloadURL;
+            return downloadURL
         }
     }
 
+    companion object {
+        const val TAG: String = "MainActivity"
+        private const val REQUEST_CODE_SETTINGS = 797
+        private var isRefresh = false
+    }
 }
