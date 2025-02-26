@@ -32,7 +32,7 @@ import kotlin.Triple;
 
 public class Utils {
 
-    private static final String DEFAULT_LANGUAGE = "eng";
+    private static final String DEFAULT_LANGUAGE = "pol";
 
     @SuppressLint("DefaultLocale")
     public static String getSize(int size) {
