@@ -96,6 +96,12 @@ dependencies {
 
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
 static String getGitWorkingBranch() {
     try {
         def gitProcess = "git rev-parse --abbrev-ref HEAD".execute()
