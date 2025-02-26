@@ -287,6 +287,10 @@ public final class CropImage {
             allIntents.add(intent);
         }
 
+        Intent pickIntent = new Intent(Intent.ACTION_GET_CONTENT);
+        pickIntent.setType("image/*");
+        allIntents.add(pickIntent);
+
         return allIntents;
     }
 

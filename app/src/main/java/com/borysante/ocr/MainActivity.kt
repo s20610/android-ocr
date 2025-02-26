@@ -380,10 +380,6 @@ class MainActivity : AppCompatActivity(), ProgressNotifier {
         return true
     }
 
-    override fun onStop() {
-        super.onStop()
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         val id = item.itemId
         if (id == R.id.action_settings) {
